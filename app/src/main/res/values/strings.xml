@@ -1,0 +1,22 @@
+<resources>
+    <string name="app_name">بده بره</string>
+    <string name="tab_free_gifts">هدایای رایگان</string>
+    <string name="tab_discounts">تخفیف‌ها و کوپن‌ها</string>
+    <string name="tab_requests">درخواست‌ها</string>
+    <string name="nav_home">خانه</string>
+    <string name="nav_favorites">نشان‌شده‌ها</string>
+    <string name="nav_add">ثبت آگهی</string>
+    <string name="nav_notifications">پیام‌ها</string>
+    <string name="nav_profile">پروفایل</string>
+    <string name="search_placeholder">جستجو در آگهی‌ها، کوپن‌ها و نیازمندی‌ها…</string>
+    <string name="all_cities">همه شهرها</string>
+    <string name="select_city">انتخاب شهر</string>
+    <string name="badge_gold">دسترسی طلایی</string>
+    <string name="badge_silver">دسترسی نقره‌ای</string>
+    <string name="badge_new">جدید</string>
+    <string name="badge_reserved">رزرو شده</string>
+    <string name="badge_expiring">در حال انقضا</string>
+    <string name="empty_state_title">هنوز چیزی اینجا نیست</string>
+    <string name="empty_state_desc">اولین نفری باشید که در این بخش آگهی ثبت می‌کند</string>
+    <string name="btn_create_listing">اولین آگهی را ثبت کن</string>
+</resources>
