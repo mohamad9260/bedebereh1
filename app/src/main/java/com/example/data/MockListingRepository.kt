@@ -1,5 +1,7 @@
 package com.example.data
 
+import com.example.data.network.ApiClient
+import com.example.data.network.CreateListingRequest
 import com.example.domain.model.DiscountInfo
 import com.example.domain.model.Listing
 import com.example.domain.model.ListingAccessStatus
@@ -8,11 +10,14 @@ import com.example.domain.model.ListingType
 import com.example.domain.model.MembershipTier
 import com.example.domain.model.SystemDynamicSettings
 import com.example.domain.model.UserProfile
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 sealed class ReservationResult {
   data object Success : ReservationResult()
@@ -26,8 +31,49 @@ sealed class ReservationResult {
 }
 
 class MockListingRepository {
+  private val repositoryScope = CoroutineScope(Dispatchers.IO)
   private val _listings = MutableStateFlow<List<Listing>>(initialListings)
   val listings: Flow<List<Listing>> = _listings.asStateFlow()
+
+  init {
+    fetchRemoteListings()
+  }
+
+  fun fetchRemoteListings() {
+    repositoryScope.launch {
+      try {
+        val response = ApiClient.apiService.getListings()
+        if (response.isSuccessful && response.body()?.status == "success") {
+          val serverItems = response.body()?.data
+          if (!serverItems.isNullOrEmpty()) {
+            val mapped = serverItems.map { dto ->
+              Listing(
+                id = "srv_${dto.id}",
+                type = ListingType.FREE_GIFT,
+                title = dto.title,
+                description = dto.description ?: "",
+                categoryId = dto.categoryId,
+                categoryNameFa = dto.categoryTitle ?: "عمومی",
+                categoryIcon = "shopping_bag",
+                ownerId = "u_remote",
+                ownerDisplayName = dto.ownerName ?: "کاربر بده‌ببر",
+                province = "ایران",
+                city = dto.city,
+                coverImageUrl = dto.imageUrl,
+                status = ListingStatus.PUBLIC,
+                timeAgoFa = "لحظاتی پیش",
+                createdAt = System.currentTimeMillis(),
+                visibilityTier = MembershipTier.FREE
+              )
+            }
+            _listings.value = mapped + initialListings
+          }
+        }
+      } catch (_: Exception) {
+        // Fallback gracefully to offline cache/initial listings
+      }
+    }
+  }
 
   private val _savedIds = MutableStateFlow<Set<String>>(setOf("1", "4"))
   val savedIds: Flow<Set<String>> = _savedIds.asStateFlow()
@@ -283,6 +329,26 @@ class MockListingRepository {
     val profile = _userProfile.value
     if (listing.type == ListingType.FREE_GIFT) {
       _userProfile.value = profile.copy(successfulOffersCount = profile.successfulOffersCount + 1)
+    }
+
+    // Push to meftah.id.ir server
+    repositoryScope.launch {
+      try {
+        ApiClient.apiService.addListing(
+          CreateListingRequest(
+            userId = 1,
+            title = listing.title,
+            categoryId = if (listing.categoryId.startsWith("fg_")) "TOOLS" else "TOOLS",
+            description = listing.description,
+            city = listing.city,
+            pricePerDay = 0.0,
+            contactPhone = profile.mobileNumberMasked.ifBlank { "09120000000" },
+            imageUrl = listing.coverImageUrl
+          )
+        )
+      } catch (_: Exception) {
+        // Keep local
+      }
     }
   }
 

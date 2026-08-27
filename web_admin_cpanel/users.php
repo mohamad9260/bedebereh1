@@ -106,6 +106,7 @@ $users = $stmt->fetchAll();
                 <option value="FREE" <?= $tierFilter === 'FREE' ? 'selected' : '' ?>>کاربر عادی (رایگان)</option>
                 <option value="SILVER" <?= $tierFilter === 'SILVER' ? 'selected' : '' ?>>کاربر نقره‌ای</option>
                 <option value="GOLD" <?= $tierFilter === 'GOLD' ? 'selected' : '' ?>>کاربر طلایی</option>
+                <option value="DIAMOND" <?= $tierFilter === 'DIAMOND' ? 'selected' : '' ?>>کاربر الماس (VIP)</option>
             </select>
         </div>
 
@@ -166,7 +167,9 @@ $users = $stmt->fetchAll();
                                 <div class="font-mono text-slate-500 mt-0.5"><?= htmlspecialchars($user['national_id'] ?? 'ثبت نشده') ?></div>
                             </td>
                             <td class="py-4 px-6">
-                                <?php if ($user['tier'] === 'GOLD'): ?>
+                                <?php if ($user['tier'] === 'DIAMOND'): ?>
+                                    <span class="bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs px-2.5 py-1 rounded-full font-bold">الماس (VIP تجاری)</span>
+                                <?php elseif ($user['tier'] === 'GOLD'): ?>
                                     <span class="bg-amber-500/10 text-amber-400 border border-amber-500/20 text-xs px-2.5 py-1 rounded-full font-bold">اشتراک طلایی</span>
                                 <?php elseif ($user['tier'] === 'SILVER'): ?>
                                     <span class="bg-slate-500/10 text-slate-300 border border-slate-500/20 text-xs px-2.5 py-1 rounded-full font-bold">اشتراک نقره‌ای</span>
