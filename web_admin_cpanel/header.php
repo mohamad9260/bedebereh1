@@ -68,7 +68,7 @@ $pendingListingsCount = $db->query("SELECT COUNT(*) FROM listings WHERE status =
         <nav class="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
             
             <!-- Dashboard -->
-            <a href="index.php" class="flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition <?= ($currentPage === 'index.php') ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white' ?>">
+            <a href="dashboard.php" class="flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition <?= ($currentPage === 'dashboard.php' || $currentPage === 'admin.php') ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white' ?>">
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-chart-pie w-5 text-center text-base"></i>
                     <span>داشبورد و آمار کل</span>
@@ -107,6 +107,30 @@ $pendingListingsCount = $db->query("SELECT COUNT(*) FROM listings WHERE status =
                 <div class="flex items-center gap-3">
                     <i class="fa-solid fa-lock w-5 text-center text-base text-amber-400"></i>
                     <span>دسته‌بندی‌ها و قفل بخش‌ها</span>
+                </div>
+            </a>
+
+            <!-- Just Became Free Manager -->
+            <a href="just_free.php" class="flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition <?= ($currentPage === 'just_free.php') ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white' ?>">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-bolt-lightning w-5 text-center text-base text-amber-400"></i>
+                    <span>همین الان رایگان شد</span>
+                </div>
+            </a>
+
+            <!-- Page Banners Customizer -->
+            <a href="banners.php" class="flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition <?= ($currentPage === 'banners.php') ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white' ?>">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-image w-5 text-center text-base text-teal-400"></i>
+                    <span>مدیریت بنر صفحات اپ</span>
+                </div>
+            </a>
+
+            <!-- User Tickets & Feedback -->
+            <a href="tickets.php" class="flex items-center justify-between px-4 py-3 rounded-2xl text-sm font-medium transition <?= ($currentPage === 'tickets.php') ? 'bg-teal-500/15 text-teal-400 border border-teal-500/30' : 'text-slate-400 hover:bg-slate-800/80 hover:text-white' ?>">
+                <div class="flex items-center gap-3">
+                    <i class="fa-solid fa-envelope-open-text w-5 text-center text-base text-cyan-400"></i>
+                    <span>پیام‌ها و تیکت‌های کاربران</span>
                 </div>
             </a>
 

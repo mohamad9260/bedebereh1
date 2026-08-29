@@ -33,9 +33,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $message = $newStatus === 1 ? 'امکان ثبت آگهی برای کاربر فعال شد.' : 'امکان ثبت آگهی برای کاربر مسدود شد.';
         } elseif ($action === 'change_tier') {
             $newTier = $_POST['new_tier'] ?? 'FREE';
-            $stmt = $db->prepare("UPDATE users SET tier = ? WHERE id = ?");
-            $stmt->execute([$newTier, $userId]);
-            $message = "سطح اشتراک کاربر به $newTier ارتقا یافت.";
+            $durationDays = (int)($_POST['duration_days'] ?? 30);
+            
+            if ($newTier === 'FREE') {
+                $stmt = $db->prepare("UPDATE users SET tier = 'FREE', tier_expires_at = NULL WHERE id = ?");
+                $stmt->execute([$userId]);
+            } elseif ($durationDays >= 9999) { // Lifetime
+                $stmt = $db->prepare("UPDATE users SET tier = ?, tier_expires_at = '2099-12-31 23:59:59' WHERE id = ?");
+                $stmt->execute([$newTier, $userId]);
+            } else {
+                $stmt = $db->prepare("UPDATE users SET tier = ?, tier_expires_at = DATE_ADD(NOW(), INTERVAL ? DAY) WHERE id = ?");
+                $stmt->execute([$newTier, $durationDays, $userId]);
+            }
+            
+            $tierLabels = [
+                'FREE' => 'عادی (رایگان)',
+                'SILVER' => 'نقره‌ای',
+                'GOLD' => 'طلایی',
+                'DIAMOND' => 'الماس (VIP تجاری)'
+            ];
+            $tierLabel = $tierLabels[$newTier] ?? $newTier;
+            $message = "سطح اشتراک کاربر با شناسه #$userId با موفقیت به «{$tierLabel}» اختصاص یافت.";
         }
     }
 }
@@ -204,6 +222,14 @@ $users = $stmt->fetchAll();
                             <td class="py-4 px-6 text-center">
                                 <div class="flex items-center justify-center gap-2">
                                     
+                                    <!-- Assign VIP Tier Button -->
+                                    <button onclick="openTierModal(<?= $user['id'] ?>, '<?= htmlspecialchars($user['full_name'], ENT_QUOTES) ?>', '<?= $user['tier'] ?>')"
+                                            class="bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 border border-amber-500/20 px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1.5"
+                                            title="اعطای اشتراک طلایی یا الماس">
+                                        <i class="fa-solid fa-crown text-[11px]"></i>
+                                        <span>اعطای پلن</span>
+                                    </button>
+
                                     <!-- Ban / Unban Button with Prompt Modal -->
                                     <?php if ($user['is_banned'] == 1): ?>
                                         <form method="POST" onsubmit="return confirm('آیا از رفع مسدودیت این کاربر اطمینان دارید؟');">
@@ -287,7 +313,77 @@ $users = $stmt->fetchAll();
     </div>
 </div>
 
+<!-- Assign Tier Modal -->
+<div id="tierModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-3xl max-w-md w-full p-6 shadow-2xl">
+        <div class="flex items-center justify-between pb-4 border-b border-slate-800 mb-4">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                    <i class="fa-solid fa-crown"></i>
+                </div>
+                <h3 class="font-bold text-white text-base">اعطای اشتراک و ارتقای سطح کاربر</h3>
+            </div>
+            <button onclick="closeTierModal()" class="text-slate-400 hover:text-white">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="users.php" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+            <input type="hidden" name="action" value="change_tier">
+            <input type="hidden" id="tierUserId" name="user_id" value="">
+
+            <p class="text-slate-300 text-sm">
+                اختصاص پلن و دسترسی ویژه به کاربر <b id="tierUserName" class="text-amber-400"></b>:
+            </p>
+
+            <div>
+                <label class="block text-slate-400 text-xs font-semibold mb-1.5">انتخاب سطح اشتراک:</label>
+                <select id="tierSelect" name="new_tier" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400">
+                    <option value="DIAMOND">💎 اشتراک الماس VIP تجاری (دسترسی نامحدود + ثبت کوپن تخفیف)</option>
+                    <option value="GOLD">👑 اشتراک طلایی (رزرو نامحدود + دسترسی زودهنگام)</option>
+                    <option value="SILVER">🥈 اشتراک نقره‌ای (۵ رزرو روزانه + دسترسی ویژه)</option>
+                    <option value="FREE">🌿 کاربر عادی (رایگان)</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-slate-400 text-xs font-semibold mb-1.5">مدت اعتبار اشتراک:</label>
+                <select name="duration_days" class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-amber-400">
+                    <option value="30">۳۰ روز (۱ ماه)</option>
+                    <option value="60">۶۰ روز (۲ ماه)</option>
+                    <option value="90">۹۰ روز (۳ ماه)</option>
+                    <option value="180">۱۸۰ روز (۶ ماه)</option>
+                    <option value="365">۳۶۵ روز (۱ سال)</option>
+                    <option value="99999">نامحدود / دائمی (همیشگی)</option>
+                </select>
+            </div>
+
+            <div class="flex items-center gap-3 pt-2">
+                <button type="submit" class="flex-1 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold py-3 rounded-2xl text-sm transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-check"></i>
+                    ثبت و اختصاص پلن
+                </button>
+                <button type="button" onclick="closeTierModal()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold px-6 py-3 rounded-2xl text-sm transition">
+                    انصراف
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
+function openTierModal(userId, userName, currentTier) {
+    document.getElementById('tierUserId').value = userId;
+    document.getElementById('tierUserName').textContent = userName;
+    if (currentTier) {
+        document.getElementById('tierSelect').value = currentTier;
+    }
+    document.getElementById('tierModal').classList.remove('hidden');
+}
+function closeTierModal() {
+    document.getElementById('tierModal').classList.add('hidden');
+}
 function openBanModal(userId, userName) {
     document.getElementById('banUserId').value = userId;
     document.getElementById('banUserName').textContent = userName;

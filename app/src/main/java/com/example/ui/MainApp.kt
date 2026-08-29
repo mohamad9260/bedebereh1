@@ -8,6 +8,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -16,6 +17,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -24,18 +26,19 @@ import com.example.data.MockListingRepository
 import com.example.data.ReservationResult
 import com.example.domain.model.Listing
 import com.example.domain.model.MembershipTier
-import com.example.ui.components.AdminModerationSheet
 import com.example.ui.components.AppBottomBar
 import com.example.ui.components.AppTopBar
 import com.example.ui.components.CitySelectorSheet
 import com.example.ui.components.ContactAdminSheet
 import com.example.ui.components.ListingDetailSheet
 import com.example.ui.components.MembershipPlansDialog
+import com.example.ui.components.PaymentGatewaySheet
 import com.example.ui.components.PersianRtlLayout
 import com.example.ui.navigation.NavRoute
 import com.example.ui.screens.AddListingScreen
 import com.example.ui.screens.FavoritesScreen
 import com.example.ui.screens.HomeScreen
+import com.example.ui.screens.MyReservationsScreen
 import com.example.ui.screens.NotificationsScreen
 import com.example.ui.screens.ProfileScreen
 import kotlinx.coroutines.launch
@@ -43,42 +46,50 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainApp(
-  repository: MockListingRepository = remember { MockListingRepository() },
   modifier: Modifier = Modifier
 ) {
+  val context = LocalContext.current
+  val repository = remember { MockListingRepository(context) }
+
+  LaunchedEffect(context) {
+    repository.attachContext(context)
+  }
+
   val navController = rememberNavController()
   val navBackStackEntry by navController.currentBackStackEntryAsState()
   val currentRoute = navBackStackEntry?.destination?.route ?: NavRoute.HOME
 
   var selectedCityName by remember { mutableStateOf("همه شهرها") }
   var searchQuery by remember { mutableStateOf("") }
-  var unreadNotificationsCount by remember { mutableIntStateOf(2) }
 
   var showCitySheet by remember { mutableStateOf(false) }
   var showPlansDialog by remember { mutableStateOf(false) }
-  var showAdminSheet by remember { mutableStateOf(false) }
   var showContactAdminSheet by remember { mutableStateOf(false) }
   var selectedListingForDetail by remember { mutableStateOf<Listing?>(null) }
+  var tierToPurchase by remember { mutableStateOf<MembershipTier?>(null) }
 
   val citySheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  val adminSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val contactAdminSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val detailSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val paymentSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
   val snackbarHostState = remember { SnackbarHostState() }
   val scope = rememberCoroutineScope()
 
   val allListings by repository.listings.collectAsState(initial = emptyList())
   val savedIds by repository.savedIds.collectAsState(initial = emptySet())
-  val userProfile by repository.userProfile.collectAsState(initial = com.example.ui.screens.defaultUserProfile)
+  val userProfile by repository.userProfile.collectAsState(initial = MockListingRepository.guestUserProfile)
   val systemSettings by repository.systemSettings.collectAsState(initial = com.example.domain.model.SystemDynamicSettings())
+  val serverBanners by repository.banners.collectAsState(initial = emptyMap())
+  val notifications by repository.notifications.collectAsState(initial = emptyList())
+  val unreadNotificationsCount = remember(notifications) { notifications.count { it.isUnread } }
 
   PersianRtlLayout {
     Scaffold(
       modifier = modifier.fillMaxSize(),
       snackbarHost = { SnackbarHost(snackbarHostState) },
       topBar = {
-        if (currentRoute in listOf(NavRoute.HOME, NavRoute.FAVORITES)) {
+        if (currentRoute in listOf(NavRoute.HOME, NavRoute.FAVORITES, NavRoute.RESERVATIONS)) {
           AppTopBar(
             currentCityName = selectedCityName,
             unreadNotificationCount = unreadNotificationsCount,
@@ -86,7 +97,6 @@ fun MainApp(
             onSearchQueryChanged = { searchQuery = it },
             onCityClick = { showCitySheet = true },
             onNotificationsClick = {
-              unreadNotificationsCount = 0
               navController.navigate(NavRoute.NOTIFICATIONS)
             },
             onSupportClick = { showContactAdminSheet = true }
@@ -134,6 +144,15 @@ fun MainApp(
           )
         }
 
+        composable(NavRoute.RESERVATIONS) {
+          MyReservationsScreen(
+            repository = repository,
+            snackbarHostState = snackbarHostState,
+            onListingClick = { item -> selectedListingForDetail = item },
+            onExploreClick = { navController.navigate(NavRoute.HOME) }
+          )
+        }
+
         composable(NavRoute.ADD_LISTING) {
           AddListingScreen(
             repository = repository,
@@ -142,7 +161,7 @@ fun MainApp(
                 popUpTo(NavRoute.HOME) { inclusive = true }
               }
               scope.launch {
-                snackbarHostState.showSnackbar("آگهی شما در «بده بره» با موفقیت منتشر شد 🎉")
+                snackbarHostState.showSnackbar("آگهی شما ثبت شد و پس از تایید مدیریت منتشر خواهد شد ⏳")
               }
             },
             onUpgradePlanClick = { showPlansDialog = true }
@@ -150,15 +169,19 @@ fun MainApp(
         }
 
         composable(NavRoute.NOTIFICATIONS) {
-          NotificationsScreen()
+          NotificationsScreen(
+            repository = repository,
+            onBack = {
+              navController.popBackStack()
+            }
+          )
         }
 
         composable(NavRoute.PROFILE) {
           ProfileScreen(
             repository = repository,
             onUpgradePlanClick = { showPlansDialog = true },
-            onContactAdminClick = { showContactAdminSheet = true },
-            onOpenAdminPanel = { showAdminSheet = true }
+            onContactAdminClick = { showContactAdminSheet = true }
           )
         }
       }
@@ -181,51 +204,46 @@ fun MainApp(
           currentTier = userProfile.plan,
           onDismiss = { showPlansDialog = false },
           onPlanSelected = { newTier ->
-            repository.upgradeMembership(newTier)
             showPlansDialog = false
-            scope.launch {
-              val tierName = when (newTier) {
-                MembershipTier.DIAMOND -> "الماس تجاری (Diamond VIP)"
-                MembershipTier.GOLD -> "طلایی (VIP)"
-                MembershipTier.SILVER -> "نقره‌ای"
-                MembershipTier.FREE -> "عادی (رایگان)"
+            if (newTier == MembershipTier.FREE) {
+              repository.upgradeMembership(MembershipTier.FREE)
+              scope.launch {
+                snackbarHostState.showSnackbar("طرح کاربری شما به طرح عادی تغییر یافت.")
               }
-              snackbarHostState.showSnackbar("طرح کاربری شما به «$tierName» تغییر یافت.")
+            } else {
+              // Open authentic payment gateway
+              tierToPurchase = newTier
             }
           }
         )
       }
 
-      // Admin Moderation BottomSheet
-      if (showAdminSheet) {
-        AdminModerationSheet(
-          listings = allListings,
-          systemSettings = systemSettings,
-          onUpdateSettings = { updatedSettings ->
-            repository.updateSettings(updatedSettings)
+      // Payment Gateway BottomSheet
+      tierToPurchase?.let { tier ->
+        PaymentGatewaySheet(
+          tierToPurchase = tier,
+          onPaymentSuccess = { purchasedTier ->
+            repository.upgradeMembership(purchasedTier)
+            tierToPurchase = null
             scope.launch {
-              snackbarHostState.showSnackbar("تنظیمات مدیریتی با موفقیت ذخیره شد.")
+              snackbarHostState.showSnackbar("پرداخت با موفقیت انجام شد! طرح شما به ${purchasedTier.titleFa} ارتقا یافت 🎉")
             }
           },
-          onStatusChange = { id, status ->
-            repository.updateListingStatus(id, status)
-            scope.launch {
-              snackbarHostState.showSnackbar("وضعیت آگهی با موفقیت بروزرسانی شد.")
-            }
-          },
-          onDismiss = { showAdminSheet = false },
-          sheetState = adminSheetState
+          onDismiss = { tierToPurchase = null },
+          sheetState = paymentSheetState
         )
       }
 
-      // Contact Admin Sheet
+      // Contact Admin Sheet (Configured dynamically from systemSettings.contactInfo)
       if (showContactAdminSheet) {
         ContactAdminSheet(
+          contactInfo = systemSettings.contactInfo,
           onDismiss = { showContactAdminSheet = false },
-          onTicketSent = {
+          onTicketSent = { subject, msg ->
             showContactAdminSheet = false
             scope.launch {
-              snackbarHostState.showSnackbar("پیام شما برای مدیر ارسال شد.")
+              repository.sendTicketToAdmin(subject, msg)
+              snackbarHostState.showSnackbar("پیام شما برای مدیر ارسال شد ✅")
             }
           },
           sheetState = contactAdminSheetState

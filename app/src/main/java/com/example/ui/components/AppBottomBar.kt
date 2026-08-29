@@ -17,6 +17,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.AssignmentTurnedIn
+import androidx.compose.material.icons.filled.EventAvailable
+import androidx.compose.material.icons.outlined.EventAvailable
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Home
@@ -73,21 +76,21 @@ fun AppBottomBar(
         onClick = { onNavigate(NavRoute.HOME) }
       )
 
-      // 2. Favorites / Saved
+      // 2. My Reservations
       BottomNavItem(
-        title = "نشان‌ها",
-        selectedIcon = Icons.Filled.Bookmark,
-        unselectedIcon = Icons.Filled.BookmarkBorder,
-        isSelected = currentRoute == NavRoute.FAVORITES,
-        testTag = "nav_favorites",
-        onClick = { onNavigate(NavRoute.FAVORITES) }
+        title = "رزروهای من",
+        selectedIcon = Icons.Filled.EventAvailable,
+        unselectedIcon = Icons.Outlined.EventAvailable,
+        isSelected = currentRoute == NavRoute.RESERVATIONS,
+        testTag = "nav_reservations",
+        onClick = { onNavigate(NavRoute.RESERVATIONS) }
       )
 
       // 3. Add Listing (Prominent Center Button)
       Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-          .padding(horizontal = 4.dp)
+          .padding(horizontal = 2.dp)
           .offset(y = (-6).dp)
       ) {
         Box(
@@ -116,14 +119,14 @@ fun AppBottomBar(
         )
       }
 
-      // 4. Notifications
+      // 4. Favorites / Saved
       BottomNavItem(
-        title = "پیام‌ها",
-        selectedIcon = Icons.Filled.Notifications,
-        unselectedIcon = Icons.Filled.NotificationsNone,
-        isSelected = currentRoute == NavRoute.NOTIFICATIONS,
-        testTag = "nav_notifications",
-        onClick = { onNavigate(NavRoute.NOTIFICATIONS) }
+        title = "نشان‌ها",
+        selectedIcon = Icons.Filled.Bookmark,
+        unselectedIcon = Icons.Filled.BookmarkBorder,
+        isSelected = currentRoute == NavRoute.FAVORITES,
+        testTag = "nav_favorites",
+        onClick = { onNavigate(NavRoute.FAVORITES) }
       )
 
       // 5. Profile

@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Diamond
+import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Settings
@@ -63,6 +64,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.domain.model.Listing
 import com.example.domain.model.ListingStatus
+import com.example.domain.model.PageBanner
 import com.example.domain.model.SystemDynamicSettings
 import com.example.ui.theme.AmberSecondary
 import com.example.ui.theme.EmeraldPrimary
@@ -73,6 +75,8 @@ import com.example.ui.theme.IndigoAccent
 fun AdminModerationSheet(
   listings: List<Listing>,
   systemSettings: SystemDynamicSettings = SystemDynamicSettings(),
+  banners: Map<String, PageBanner> = emptyMap(),
+  onUpdateBannerStatus: (String, Boolean) -> Unit = { _, _ -> },
   onUpdateSettings: (SystemDynamicSettings) -> Unit = {},
   onStatusChange: (String, ListingStatus) -> Unit,
   onDismiss: () -> Unit,
@@ -116,13 +120,13 @@ fun AdminModerationSheet(
           Spacer(modifier = Modifier.width(10.dp))
           Column {
             Text(
-              text = "پنل مدیریت و پیکربندی سامانه",
+              text = "پنل مدیریت و نظارت (Admin)",
               style = MaterialTheme.typography.titleMedium,
               fontWeight = FontWeight.Bold,
               color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-              text = "مدیریت آگهی‌ها، ساعات دسترسی زودهنگام و سقف رزرو پکیج‌ها",
+              text = "نظارت آگهی‌ها، بنرها و تنظیمات اولویت پکیج‌ها",
               style = MaterialTheme.typography.bodySmall,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -154,7 +158,7 @@ fun AdminModerationSheet(
             Text(
               text = "نظارت آگهی‌ها (${PersianUtils.formatNumber(listings.size)})",
               fontWeight = FontWeight.Bold,
-              fontSize = 12.sp
+              fontSize = 11.sp
             )
           }
         )
@@ -163,9 +167,20 @@ fun AdminModerationSheet(
           onClick = { selectedAdminTab = 1 },
           text = {
             Text(
-              text = "تنظیمات پکیج‌ها و زمان‌بندی",
+              text = "مدیریت بنرها",
               fontWeight = FontWeight.Bold,
-              fontSize = 12.sp
+              fontSize = 11.sp
+            )
+          }
+        )
+        Tab(
+          selected = selectedAdminTab == 2,
+          onClick = { selectedAdminTab = 2 },
+          text = {
+            Text(
+              text = "تنظیمات پکیج‌ها",
+              fontWeight = FontWeight.Bold,
+              fontSize = 11.sp
             )
           }
         )
@@ -173,236 +188,262 @@ fun AdminModerationSheet(
 
       Spacer(modifier = Modifier.height(14.dp))
 
-      if (selectedAdminTab == 0) {
-        // Listings moderation list
-        LazyColumn(
-          modifier = Modifier.fillMaxWidth(),
-          contentPadding = PaddingValues(bottom = 30.dp),
-          verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-          items(listings, key = { it.id }) { item ->
-            ModerationItemCard(
-              listing = item,
-              onApprove = { onStatusChange(item.id, ListingStatus.PUBLIC) },
-              onReserve = { onStatusChange(item.id, ListingStatus.RESERVED) },
-              onReject = { onStatusChange(item.id, ListingStatus.REJECTED) }
-            )
+      when (selectedAdminTab) {
+        0 -> {
+          // Listings moderation list
+          LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 30.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+          ) {
+            items(listings, key = { it.id }) { item ->
+              ModerationItemCard(
+                listing = item,
+                onApprove = { onStatusChange(item.id, ListingStatus.PUBLIC) },
+                onReserve = { onStatusChange(item.id, ListingStatus.RESERVED) },
+                onReject = { onStatusChange(item.id, ListingStatus.REJECTED) }
+              )
+            }
           }
         }
-      } else {
-        // Dynamic System Settings Panel
-        LazyColumn(
-          modifier = Modifier.fillMaxWidth(),
-          contentPadding = PaddingValues(bottom = 30.dp),
-          verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-          item {
-            Card(
-              modifier = Modifier.fillMaxWidth(),
-              shape = RoundedCornerShape(14.dp),
-              colors = CardDefaults.cardColors(containerColor = AmberSecondary.copy(alpha = 0.08f))
-            ) {
-              Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                  text = "⏱️ زمان‌بندی اولویت دسترسی زودهنگام پکیج‌ها",
-                  style = MaterialTheme.typography.titleSmall,
-                  fontWeight = FontWeight.Bold,
-                  color = AmberSecondary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                  text = "آگهی‌ها برای عموم کاربران نمایش داده می‌شوند، اما در ساعات اولیه فقط توسط دارندگان پکیج‌های مجاز قابل رزرو و انتخاب هستند.",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant,
-                  lineHeight = 18.sp
-                )
-                Spacer(modifier = Modifier.height(10.dp))
+        1 -> {
+          // Banners Management
+          LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 30.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+          ) {
+            val bannerEntries = listOf(
+              Triple("home_free_gift", "بنر صفحه هدایای رایگان", "هدایای کاملاً رایگان هموطنان"),
+              Triple("home_discount", "بنر صفحه تخفیف‌ها", "تخفیف‌ها و کوپن‌های اختصاصی"),
+              Triple("home_request", "بنر صفحه نیازمندی‌ها", "درخواست‌های نیازمندی و یاری"),
+              Triple("home", "بنر صفحه اصلی (عمومی)", "بده بره؛ مهربونی رو تکثیر کن")
+            )
 
-                SettingStepperRow(
-                  title = "زمان دسترسی زودهنگام طلایی / الماس:",
-                  unit = "ساعت قبل از عموم",
-                  value = systemSettings.goldEarlyAccessHours,
-                  minValue = 1,
-                  maxValue = 24,
-                  onValueChange = { newVal ->
-                    onUpdateSettings(systemSettings.copy(goldEarlyAccessHours = newVal, diamondEarlyAccessHours = newVal))
-                  }
-                )
+            items(bannerEntries) { (pageKey, title, sub) ->
+              val currentBanner = banners[pageKey]
+              val isBannerActive = currentBanner?.isActive ?: true
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                SettingStepperRow(
-                  title = "زمان دسترسی زودهنگام نقره‌ای:",
-                  unit = "ساعت قبل از عموم",
-                  value = systemSettings.silverEarlyAccessHours,
-                  minValue = 1,
-                  maxValue = systemSettings.goldEarlyAccessHours - 1,
-                  onValueChange = { newVal ->
-                    onUpdateSettings(systemSettings.copy(silverEarlyAccessHours = newVal))
-                  }
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                SettingStepperRow(
-                  title = "بازه نمایش «همین الان رایگان شد»:",
-                  unit = "ساعت پس از آزادسازی",
-                  value = systemSettings.justBecameAvailableDurationHours,
-                  minValue = 1,
-                  maxValue = 72,
-                  onValueChange = { newVal ->
-                    onUpdateSettings(systemSettings.copy(justBecameAvailableDurationHours = newVal))
-                  }
-                )
-              }
-            }
-          }
-
-          item {
-            Card(
-              modifier = Modifier.fillMaxWidth(),
-              shape = RoundedCornerShape(14.dp),
-              colors = CardDefaults.cardColors(containerColor = EmeraldPrimary.copy(alpha = 0.08f))
-            ) {
-              Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                  text = "📋 سقف مجاز رزرو روزانه کارت‌ها بر اساس پکیج",
-                  style = MaterialTheme.typography.titleSmall,
-                  fontWeight = FontWeight.Bold,
-                  color = EmeraldPrimary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                  text = "حداکثر تعداد کارت‌هایی که کاربران در طول ۲۴ ساعت مجاز به رزرو هستند:",
-                  style = MaterialTheme.typography.bodySmall,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
-                SettingStepperRow(
-                  title = "سقف روزانه پلن عادی (رایگان):",
-                  unit = "کارت در روز",
-                  value = systemSettings.freeDailyReserveLimit,
-                  minValue = 1,
-                  maxValue = 20,
-                  onValueChange = { newVal ->
-                    onUpdateSettings(systemSettings.copy(freeDailyReserveLimit = newVal))
-                  }
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                SettingStepperRow(
-                  title = "سقف روزانه پلن نقره‌ای:",
-                  unit = "کارت در روز",
-                  value = systemSettings.silverDailyReserveLimit,
-                  minValue = 2,
-                  maxValue = 50,
-                  onValueChange = { newVal ->
-                    onUpdateSettings(systemSettings.copy(silverDailyReserveLimit = newVal))
-                  }
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                SettingStepperRow(
-                  title = "سقف روزانه پلن طلایی:",
-                  unit = "کارت در روز",
-                  value = systemSettings.goldDailyReserveLimit,
-                  minValue = 5,
-                  maxValue = 100,
-                  onValueChange = { newVal ->
-                    onUpdateSettings(systemSettings.copy(goldDailyReserveLimit = newVal))
-                  }
-                )
-
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
-
-                SettingStepperRow(
-                  title = "سقف روزانه پلن الماس VIP:",
-                  unit = "کارت در روز",
-                  value = systemSettings.diamondDailyReserveLimit,
-                  minValue = 10,
-                  maxValue = 200,
-                  onValueChange = { newVal ->
-                    onUpdateSettings(systemSettings.copy(diamondDailyReserveLimit = newVal))
-                  }
-                )
-              }
-            }
-          }
-
-          item {
-            Card(
-              modifier = Modifier.fillMaxWidth(),
-              shape = RoundedCornerShape(14.dp),
-              colors = CardDefaults.cardColors(containerColor = IndigoAccent.copy(alpha = 0.08f))
-            ) {
-              Column(modifier = Modifier.padding(14.dp)) {
-                Text(
-                  text = "💎 قوانین پکیج الماس و کدهای تخفیف",
-                  style = MaterialTheme.typography.titleSmall,
-                  fontWeight = FontWeight.Bold,
-                  color = IndigoAccent
-                )
-                Spacer(modifier = Modifier.height(10.dp))
-
+              Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+              ) {
                 Row(
-                  modifier = Modifier.fillMaxWidth(),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(14.dp),
                   horizontalArrangement = Arrangement.SpaceBetween,
                   verticalAlignment = Alignment.CenterVertically
                 ) {
-                  Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                      text = "الزام پکیج الماس برای ثبت کوپن تخفیف",
-                      style = MaterialTheme.typography.bodyMedium,
-                      fontWeight = FontWeight.Bold,
-                      color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                      text = "فقط کسب‌وکارها و کاربران پکیج الماس می‌توانند آگهی کوپن/تخفیف ثبت کنند",
-                      style = MaterialTheme.typography.bodySmall,
-                      color = MaterialTheme.colorScheme.onSurfaceVariant,
-                      fontSize = 11.sp
-                    )
+                  Row(modifier = Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                      modifier = Modifier
+                        .size(36.dp)
+                        .clip(CircleShape)
+                        .background(EmeraldPrimary.copy(alpha = 0.12f)),
+                      contentAlignment = Alignment.Center
+                    ) {
+                      Icon(Icons.Default.Image, contentDescription = null, tint = EmeraldPrimary, modifier = Modifier.size(20.dp))
+                    }
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                      Text(title, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+                      Text(sub, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                   }
+
                   Switch(
-                    checked = systemSettings.requireDiamondForDiscounts,
+                    checked = isBannerActive,
                     onCheckedChange = { checked ->
-                      onUpdateSettings(systemSettings.copy(requireDiamondForDiscounts = checked))
+                      onUpdateBannerStatus(pageKey, checked)
                     },
                     colors = SwitchDefaults.colors(checkedThumbColor = EmeraldPrimary)
                   )
                 }
+              }
+            }
+          }
+        }
+        2 -> {
+          // Dynamic System Settings Panel
+          LazyColumn(
+            modifier = Modifier.fillMaxWidth(),
+            contentPadding = PaddingValues(bottom = 30.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+          ) {
+            item {
+              Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = AmberSecondary.copy(alpha = 0.08f))
+              ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                  Text(
+                    text = "⏱️ زمان‌بندی اولویت دسترسی زودهنگام پکیج‌ها",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = AmberSecondary
+                  )
+                  Spacer(modifier = Modifier.height(4.dp))
+                  Text(
+                    text = "آگهی‌ها در ساعات اولیه فقط توسط دارندگان پکیج‌های مجاز قابل انتخاب و رزرو هستند.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    lineHeight = 18.sp
+                  )
+                  Spacer(modifier = Modifier.height(10.dp))
 
-                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                  SettingStepperRow(
+                    title = "زمان دسترسی زودهنگام طلایی / الماس:",
+                    unit = "ساعت قبل از عموم",
+                    value = systemSettings.goldEarlyAccessHours,
+                    minValue = 1,
+                    maxValue = 24,
+                    onValueChange = { newVal ->
+                      onUpdateSettings(systemSettings.copy(goldEarlyAccessHours = newVal, diamondEarlyAccessHours = newVal))
+                    }
+                  )
 
-                Row(
-                  modifier = Modifier.fillMaxWidth(),
-                  horizontalArrangement = Arrangement.SpaceBetween,
-                  verticalAlignment = Alignment.CenterVertically
-                ) {
-                  Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                      text = "فعال بودن دریافت هزینه برای پکیج الماس",
-                      style = MaterialTheme.typography.bodyMedium,
-                      fontWeight = FontWeight.Bold,
-                      color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Text(
-                      text = "در صورت غیرفعال بودن، پکیج الماس به صورت رایگان ارائه می‌گردد",
-                      style = MaterialTheme.typography.bodySmall,
-                      color = MaterialTheme.colorScheme.onSurfaceVariant,
-                      fontSize = 11.sp
+                  HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                  SettingStepperRow(
+                    title = "زمان دسترسی زودهنگام نقره‌ای:",
+                    unit = "ساعت قبل از عموم",
+                    value = systemSettings.silverEarlyAccessHours,
+                    minValue = 1,
+                    maxValue = systemSettings.goldEarlyAccessHours - 1,
+                    onValueChange = { newVal ->
+                      onUpdateSettings(systemSettings.copy(silverEarlyAccessHours = newVal))
+                    }
+                  )
+
+                  HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                  SettingStepperRow(
+                    title = "بازه نمایش «همین الان رایگان شد»:",
+                    unit = "ساعت پس از آزادسازی",
+                    value = systemSettings.justBecameAvailableDurationHours,
+                    minValue = 1,
+                    maxValue = 72,
+                    onValueChange = { newVal ->
+                      onUpdateSettings(systemSettings.copy(justBecameAvailableDurationHours = newVal))
+                    }
+                  )
+                }
+              }
+            }
+
+            item {
+              Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = EmeraldPrimary.copy(alpha = 0.08f))
+              ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                  Text(
+                    text = "🎯 سقف مجاز رزرو روزانه بر اساس پکیج‌ها",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = EmeraldPrimary
+                  )
+                  Spacer(modifier = Modifier.height(10.dp))
+
+                  SettingStepperRow(
+                    title = "سقف روزانه پلن عادی (رایگان):",
+                    unit = "کارت در روز",
+                    value = systemSettings.freeDailyReserveLimit,
+                    minValue = 1,
+                    maxValue = 10,
+                    onValueChange = { newVal ->
+                      onUpdateSettings(systemSettings.copy(freeDailyReserveLimit = newVal))
+                    }
+                  )
+
+                  HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                  SettingStepperRow(
+                    title = "سقف روزانه پلن نقره‌ای:",
+                    unit = "کارت در روز",
+                    value = systemSettings.silverDailyReserveLimit,
+                    minValue = 2,
+                    maxValue = 20,
+                    onValueChange = { newVal ->
+                      onUpdateSettings(systemSettings.copy(silverDailyReserveLimit = newVal))
+                    }
+                  )
+
+                  HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                  SettingStepperRow(
+                    title = "سقف روزانه پلن طلایی:",
+                    unit = "کارت در روز",
+                    value = systemSettings.goldDailyReserveLimit,
+                    minValue = 5,
+                    maxValue = 50,
+                    onValueChange = { newVal ->
+                      onUpdateSettings(systemSettings.copy(goldDailyReserveLimit = newVal))
+                    }
+                  )
+
+                  HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
+                  SettingStepperRow(
+                    title = "سقف روزانه پلن الماس VIP:",
+                    unit = "کارت در روز",
+                    value = systemSettings.diamondDailyReserveLimit,
+                    minValue = 10,
+                    maxValue = 200,
+                    onValueChange = { newVal ->
+                      onUpdateSettings(systemSettings.copy(diamondDailyReserveLimit = newVal))
+                    }
+                  )
+                }
+              }
+            }
+
+            item {
+              Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = IndigoAccent.copy(alpha = 0.08f))
+              ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                  Text(
+                    text = "💎 قوانین پکیج الماس و کدهای تخفیف",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = IndigoAccent
+                  )
+                  Spacer(modifier = Modifier.height(10.dp))
+
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                  ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                      Text(
+                        text = "الزام پکیج الماس برای ثبت کوپن تخفیف",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                      )
+                      Text(
+                        text = "فقط کسب‌وکارها و کاربران پکیج الماس می‌توانند آگهی کوپن/تخفیف ثبت کنند",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 11.sp
+                      )
+                    }
+                    Switch(
+                      checked = systemSettings.requireDiamondForDiscounts,
+                      onCheckedChange = { checked ->
+                        onUpdateSettings(systemSettings.copy(requireDiamondForDiscounts = checked))
+                      },
+                      colors = SwitchDefaults.colors(checkedThumbColor = EmeraldPrimary)
                     )
                   }
-                  Switch(
-                    checked = systemSettings.isDiamondFeeEnabled,
-                    onCheckedChange = { checked ->
-                      onUpdateSettings(systemSettings.copy(isDiamondFeeEnabled = checked))
-                    },
-                    colors = SwitchDefaults.colors(checkedThumbColor = EmeraldPrimary)
-                  )
                 }
               }
             }
@@ -529,7 +570,7 @@ private fun ModerationItemCard(
       Spacer(modifier = Modifier.height(4.dp))
 
       Text(
-        text = "ثبت شده توسط: ${listing.ownerDisplayName} • ${listing.city}",
+        text = "ثبت‌کننده: ${listing.ownerDisplayName} (${PersianUtils.formatMaskedPhone(listing.ownerPhone ?: "")}) • ${listing.city}",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         fontSize = 11.sp
@@ -549,7 +590,7 @@ private fun ModerationItemCard(
         ) {
           Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(14.dp))
           Spacer(modifier = Modifier.width(4.dp))
-          Text("انتشار", fontSize = 11.sp, color = Color.White)
+          Text("انتشار آگهی", fontSize = 11.sp, color = Color.White)
         }
 
         OutlinedButton(

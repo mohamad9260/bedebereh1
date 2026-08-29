@@ -15,15 +15,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $message = 'نشست شما منقضی شده است.';
         $messageType = 'error';
     } else {
-        if ($action === 'toggle_lock') {
+        if ($action === 'toggle_lock' || $action === 'unlock_category' || $action === 'lock_category') {
             $catId = $_POST['category_id'] ?? '';
-            $currentLock = (int)($_POST['current_lock'] ?? 0);
-            $newLock = $currentLock === 1 ? 0 : 1;
-            $lockMsg = trim($_POST['lock_message'] ?? 'ثبت آگهی در این بخش موقتاً غیرفعال است.');
+            if ($action === 'unlock_category') {
+                $newLock = 0;
+                $lockMsg = null;
+            } elseif ($action === 'lock_category') {
+                $newLock = 1;
+                $lockMsg = trim($_POST['lock_message'] ?? 'ثبت آگهی در این بخش موقتاً غیرفعال است.');
+            } else {
+                $currentLock = (int)($_POST['current_lock'] ?? 0);
+                $newLock = $currentLock === 1 ? 0 : 1;
+                $lockMsg = $newLock === 1 ? trim($_POST['lock_message'] ?? 'ثبت آگهی در این بخش موقتاً غیرفعال است.') : null;
+            }
 
             $stmt = $db->prepare("UPDATE categories SET is_locked = ?, lock_message = ? WHERE id = ?");
             $stmt->execute([$newLock, $lockMsg, $catId]);
-            $message = $newLock === 1 ? "بخش $catId با موفقیت قفل شد." : "قفل بخش $catId باز شد.";
+            $message = $newLock === 1 ? "بخش «{$catId}» با موفقیت قفل شد." : "قفل بخش «{$catId}» با موفقیت باز شد.";
         } elseif ($action === 'add_category') {
             $id = trim($_POST['id'] ?? '');
             $parentId = !empty($_POST['parent_id']) ? trim($_POST['parent_id']) : null;
@@ -197,17 +205,28 @@ foreach ($allCategories as $c) {
                                 <div class="text-[11px] text-slate-400">آگهی‌ها: <b class="text-teal-400"><?= persianNumber($child['listings_count']) ?></b></div>
                             </div>
                             <div class="flex items-center justify-end gap-1.5 pt-3 border-t border-slate-900 mt-3">
-                                <button onclick='openEditModal(<?= json_encode($child) ?>)' class="text-amber-400 hover:text-amber-300 text-xs p-1.5 rounded">
+                                <button onclick='openEditModal(<?= json_encode($child) ?>)' class="text-amber-400 hover:text-amber-300 text-xs p-1.5 rounded" title="ویرایش زیردسته">
                                     <i class="fa-solid fa-pen"></i>
                                 </button>
-                                <button onclick="openLockModal('<?= $child['id'] ?>', '<?= htmlspecialchars($child['name_fa'], ENT_QUOTES) ?>')" class="text-rose-400 hover:text-rose-300 text-xs p-1.5 rounded">
-                                    <i class="fa-solid fa-lock"></i>
-                                </button>
+                                <?php if ($child['is_locked'] == 1): ?>
+                                    <form method="POST" class="inline">
+                                        <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
+                                        <input type="hidden" name="action" value="unlock_category">
+                                        <input type="hidden" name="category_id" value="<?= $child['id'] ?>">
+                                        <button type="submit" class="text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 p-1.5 rounded text-xs" title="باز کردن قفل این زیردسته">
+                                            <i class="fa-solid fa-lock-open"></i>
+                                        </button>
+                                    </form>
+                                <?php else: ?>
+                                    <button onclick="openLockModal('<?= $child['id'] ?>', '<?= htmlspecialchars($child['name_fa'], ENT_QUOTES) ?>')" class="text-rose-400 hover:text-rose-300 bg-rose-500/10 p-1.5 rounded text-xs" title="قفل کردن این زیردسته">
+                                        <i class="fa-solid fa-lock"></i>
+                                    </button>
+                                <?php endif; ?>
                                 <form method="POST" onsubmit="return confirm('آیا از حذف این زیردسته اطمینان دارید؟')" class="inline">
                                     <input type="hidden" name="csrf_token" value="<?= generateCsrfToken() ?>">
                                     <input type="hidden" name="action" value="delete_category">
                                     <input type="hidden" name="id" value="<?= $child['id'] ?>">
-                                    <button type="submit" class="text-slate-500 hover:text-rose-400 text-xs p-1.5 rounded">
+                                    <button type="submit" class="text-slate-500 hover:text-rose-400 text-xs p-1.5 rounded" title="حذف">
                                         <i class="fa-solid fa-trash"></i>
                                     </button>
                                 </form>

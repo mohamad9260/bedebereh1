@@ -10,13 +10,14 @@
         <aapt:attr name="android:fillColor">
             <gradient
                 android:angle="315"
-                android:endColor="#004D40"
-                android:startColor="#00897B"
+                android:endColor="#064E3B"
+                android:centerColor="#0D9488"
+                android:startColor="#00B4D8"
                 android:type="linear" />
         </aapt:attr>
     </path>
-    <!-- Subtle circle ambient glow -->
+    <!-- Subtle circular ambient glow -->
     <path
-        android:fillColor="#15FFFFFF"
+        android:fillColor="#1AFFFFFF"
         android:pathData="M54,54m-42,0a42,42 0,1,1 84,0a42,42 0,1,1 -84,0" />
 </vector>

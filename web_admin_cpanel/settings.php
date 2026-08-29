@@ -35,6 +35,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $goldDailyLimit = trim($_POST['gold_daily_reserve_limit'] ?? '15');
             $diamondDailyLimit = trim($_POST['diamond_daily_reserve_limit'] ?? '25');
 
+            // Support & Contact Info
+            $supportPhone = trim($_POST['support_phone'] ?? '021-88889260');
+            $supportEmail = trim($_POST['support_email'] ?? 'admin@bedebere.ir');
+            $supportTelegram = trim($_POST['support_telegram'] ?? '@bedebere_admin');
+            $supportHours = trim($_POST['support_hours'] ?? 'پاسخگویی سریع ۲۴ ساعته');
+            $justFreeHours = trim($_POST['just_free_hours'] ?? '24');
+
             setSetting('zarinpal_merchant_id', $merchantId, 'کد درگاه زرین‌پال');
             setSetting('zarinpal_sandbox', $sandbox, 'حالت آزمایشی زرین‌پال');
             setSetting('silver_plan_price', $silverPrice, 'قیمت اشتراک نقره‌ای به تومان');
@@ -52,7 +59,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             setSetting('gold_daily_reserve_limit', $goldDailyLimit, 'سقف مجاز رزرو روزانه برای کاربران طلایی');
             setSetting('diamond_daily_reserve_limit', $diamondDailyLimit, 'سقف مجاز رزرو روزانه برای کاربران الماس');
 
-            $message = 'تنظیمات پلن‌ها، زمان دسترسی زودهنگام و محدودیت‌های رزرو روزانه با موفقیت ذخیره گردید.';
+            setSetting('support_phone', $supportPhone, 'شماره تماس پشتیبانی اپ');
+            setSetting('support_email', $supportEmail, 'ایمیل پشتیبانی اپ');
+            setSetting('support_telegram', $supportTelegram, 'شناسه تلگرام پشتیبانی');
+            setSetting('support_hours', $supportHours, 'ساعات پاسخگویی پشتیبانی');
+            setSetting('just_free_hours', $justFreeHours, 'ساعت نمایش در همین الان رایگان شد');
+
+            $message = 'تمامی تنظیمات سامانه، اطلاعات تماس با مدیر و پلن‌ها با موفقیت ذخیره گردید.';
         } elseif ($action === 'change_password') {
             $oldPass = trim($_POST['old_password'] ?? '');
             $newPass = trim($_POST['new_password'] ?? '');
@@ -96,6 +109,12 @@ $freeDailyLimit = getSetting('free_daily_reserve_limit', '3');
 $silverDailyLimit = getSetting('silver_daily_reserve_limit', '8');
 $goldDailyLimit = getSetting('gold_daily_reserve_limit', '15');
 $diamondDailyLimit = getSetting('diamond_daily_reserve_limit', '25');
+
+$supportPhone = getSetting('support_phone', '021-88889260');
+$supportEmail = getSetting('support_email', 'admin@bedebere.ir');
+$supportTelegram = getSetting('support_telegram', '@bedebere_admin');
+$supportHours = getSetting('support_hours', 'پاسخگویی سریع ۲۴ ساعته');
+$justFreeHours = getSetting('just_free_hours', '24');
 ?>
 
 <!-- Feedback Alert -->
@@ -283,6 +302,49 @@ $diamondDailyLimit = getSetting('diamond_daily_reserve_limit', '25');
                     <label class="block text-slate-300 text-xs font-semibold mb-2">قیمت اشتراک طلایی (تومان):</label>
                     <input type="number" name="gold_plan_price" value="<?= htmlspecialchars($goldPrice) ?>" required
                            class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-teal-400">
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Support & Contact Info Settings (Admin Adjustable) -->
+        <div id="contact_info" class="bg-slate-900 border border-slate-800 rounded-3xl p-6 shadow-xl space-y-5 lg:col-span-2">
+            <div class="flex items-center gap-3 pb-4 border-b border-slate-800">
+                <div class="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-400 flex items-center justify-center">
+                    <i class="fa-solid fa-headset text-lg"></i>
+                </div>
+                <div>
+                    <h3 class="font-bold text-white text-base">اطلاعات تماس با مدیر و پشتیبانی اپلیکیشن</h3>
+                    <p class="text-xs text-slate-400">تنظیم شماره تماس، ایمیل، آیدی تلگرام و متن راهنمای ارتباط با مدیریت</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-slate-300 text-xs font-semibold mb-2">شماره تماس پشتیبانی:</label>
+                    <input type="text" name="support_phone" value="<?= htmlspecialchars($supportPhone) ?>" required
+                           class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-teal-400 text-left" dir="ltr"
+                           placeholder="02188889260">
+                </div>
+
+                <div>
+                    <label class="block text-slate-300 text-xs font-semibold mb-2">ایمیل پشتیبانی:</label>
+                    <input type="email" name="support_email" value="<?= htmlspecialchars($supportEmail) ?>" required
+                           class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-teal-400 text-left" dir="ltr"
+                           placeholder="admin@bedebere.ir">
+                </div>
+
+                <div>
+                    <label class="block text-slate-300 text-xs font-semibold mb-2">آیدی تلگرام / شبکه‌های اجتماعی:</label>
+                    <input type="text" name="support_telegram" value="<?= htmlspecialchars($supportTelegram) ?>"
+                           class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm font-mono text-white focus:outline-none focus:border-teal-400 text-left" dir="ltr"
+                           placeholder="@bedebere_admin">
+                </div>
+
+                <div>
+                    <label class="block text-slate-300 text-xs font-semibold mb-2">ساعات پاسخگویی / توضیحات:</label>
+                    <input type="text" name="support_hours" value="<?= htmlspecialchars($supportHours) ?>"
+                           class="w-full bg-slate-950 border border-slate-700 rounded-2xl px-4 py-3 text-sm text-white focus:outline-none focus:border-teal-400"
+                           placeholder="پاسخگویی سریع ۲۴ ساعته">
                 </div>
             </div>
         </div>

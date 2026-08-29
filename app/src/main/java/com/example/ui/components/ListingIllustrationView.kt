@@ -18,14 +18,20 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoAwesome
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Chair
+import androidx.compose.material.icons.filled.Checkroom
 import androidx.compose.material.icons.filled.ChildCare
 import androidx.compose.material.icons.filled.Computer
 import androidx.compose.material.icons.filled.Devices
+import androidx.compose.material.icons.filled.DirectionsCar
 import androidx.compose.material.icons.filled.Fastfood
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Kitchen
 import androidx.compose.material.icons.filled.LocalOffer
+import androidx.compose.material.icons.filled.MedicalServices
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Restaurant
 import androidx.compose.material.icons.filled.School
@@ -40,20 +46,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.example.domain.model.Listing
 import com.example.domain.model.ListingType
 import com.example.ui.theme.AmberSecondary
@@ -93,6 +99,11 @@ enum class SceneType {
   COURSE_DEV,
   SHOPPING_DIGITAL,
   BABY_STROLLER,
+  CAR_VEHICLE,
+  KITCHEN_HOME,
+  TOOLS_DIY,
+  CLOTHES_FASHION,
+  HEALTH_MEDICAL,
   GENERIC_GIFT,
   GENERIC_DISCOUNT,
   GENERIC_REQUEST
@@ -106,9 +117,19 @@ fun ListingIllustrationView(
   height: Dp = 160.dp,
   showBadge: Boolean = true
 ) {
+  val shape = when (layout) {
+    IllustrationLayout.WIDE_BANNER -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
+    IllustrationLayout.SPLIT_SIDE -> RoundedCornerShape(14.dp)
+    IllustrationLayout.SQUARE_MAGAZINE -> RoundedCornerShape(16.dp)
+    IllustrationLayout.SPOTLIGHT_HERO -> RoundedCornerShape(16.dp)
+    IllustrationLayout.COMPACT_ICON -> RoundedCornerShape(12.dp)
+  }
+
+  val imageUrl = listing.coverImageUrl
+  val isRealImage = !imageUrl.isNullOrBlank() && !imageUrl.startsWith("vector:", ignoreCase = true)
+
   val theme = getThemeForListing(listing)
 
-  // Infinite shimmer pulse for dynamic animations
   val infiniteTransition = rememberInfiniteTransition(label = "illustration_pulse")
   val pulseScale by infiniteTransition.animateFloat(
     initialValue = 0.95f,
@@ -120,47 +141,38 @@ fun ListingIllustrationView(
     label = "pulse_scale"
   )
 
-  val shimmerOffset by infiniteTransition.animateFloat(
-    initialValue = 0f,
-    targetValue = 1000f,
-    animationSpec = infiniteRepeatable(
-      animation = tween(3000, easing = FastOutSlowInEasing),
-      repeatMode = RepeatMode.Restart
-    ),
-    label = "shimmer_offset"
-  )
-
   Box(
     modifier = modifier
-      .clip(
-        when (layout) {
-          IllustrationLayout.WIDE_BANNER -> RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp)
-          IllustrationLayout.SPLIT_SIDE -> RoundedCornerShape(14.dp)
-          IllustrationLayout.SQUARE_MAGAZINE -> RoundedCornerShape(16.dp)
-          IllustrationLayout.SPOTLIGHT_HERO -> RoundedCornerShape(16.dp)
-          IllustrationLayout.COMPACT_ICON -> RoundedCornerShape(12.dp)
-        }
-      )
+      .clip(shape)
       .background(Brush.linearGradient(theme.gradient))
   ) {
-    // Custom Background Geometric Canvas
-    Canvas(modifier = Modifier.fillMaxSize()) {
-      drawVectorSceneBackground(theme, size.width, size.height, pulseScale)
-    }
-
-    // Main Center Iconic Composition
-    Box(
-      modifier = Modifier
-        .fillMaxSize()
-        .padding(8.dp),
-      contentAlignment = Alignment.Center
-    ) {
-      IllustrationContent(
-        theme = theme,
-        listing = listing,
-        layout = layout,
-        pulseScale = pulseScale
+    if (isRealImage) {
+      AsyncImage(
+        model = imageUrl,
+        contentDescription = listing.title,
+        contentScale = ContentScale.Crop,
+        modifier = Modifier.fillMaxSize()
       )
+    } else {
+      // Custom Background Geometric Canvas
+      Canvas(modifier = Modifier.fillMaxSize()) {
+        drawVectorSceneBackground(theme, size.width, size.height, pulseScale)
+      }
+
+      // Main Center Iconic Composition
+      Box(
+        modifier = Modifier
+          .fillMaxSize()
+          .padding(8.dp),
+        contentAlignment = Alignment.Center
+      ) {
+        IllustrationContent(
+          theme = theme,
+          listing = listing,
+          layout = layout,
+          pulseScale = pulseScale
+        )
+      }
     }
 
     // Floating Highlight Tag on Top Corner
@@ -318,9 +330,10 @@ fun getThemeForListing(listing: Listing): IllustrationTheme {
   val title = listing.title
   val cat = listing.categoryId
   val type = listing.type
+  val vectorKey = listing.coverImageUrl ?: ""
 
   return when {
-    title.contains("میز") || cat == "fg_furniture" || cat == "rq_study" -> {
+    vectorKey == "vector:furniture" || title.contains("میز") || title.contains("مبل") || cat == "fg_furniture" || cat == "rq_study" -> {
       IllustrationTheme(
         gradient = listOf(Color(0xFF0D9488), Color(0xFF14B8A6), Color(0xFF5EEAD4)),
         primaryAccent = EmeraldPrimary,
@@ -330,7 +343,7 @@ fun getThemeForListing(listing: Listing): IllustrationTheme {
         sceneType = SceneType.FURNITURE_STUDY
       )
     }
-    title.contains("کتاب") || title.contains("کنکور") || cat == "fg_books" || cat == "dc_online" -> {
+    vectorKey == "vector:books" || title.contains("کتاب") || title.contains("کنکور") || cat == "fg_books" || cat == "dc_online" -> {
       IllustrationTheme(
         gradient = listOf(Color(0xFF6366F1), Color(0xFF818CF8), Color(0xFFC7D2FE)),
         primaryAccent = IndigoAccent,
@@ -340,7 +353,7 @@ fun getThemeForListing(listing: Listing): IllustrationTheme {
         sceneType = SceneType.BOOKS_EDUCATION
       )
     }
-    title.contains("کاپشن") || title.contains("لباس") || cat == "fg_kids" -> {
+    vectorKey == "vector:kids" || title.contains("کاپشن") || title.contains("کودک") || title.contains("اسباب") || cat == "fg_kids" -> {
       IllustrationTheme(
         gradient = listOf(Color(0xFFF43F5E), Color(0xFFFB7185), Color(0xFFFECDD3)),
         primaryAccent = CoralTertiary,
@@ -350,7 +363,7 @@ fun getThemeForListing(listing: Listing): IllustrationTheme {
         sceneType = SceneType.KIDS_WARMTH
       )
     }
-    title.contains("مانیتور") || title.contains("الکترونیک") || cat == "fg_electronics" -> {
+    vectorKey == "vector:digital" || title.contains("مانیتور") || title.contains("کامپیوتر") || title.contains("موبایل") || cat == "fg_electronics" -> {
       IllustrationTheme(
         gradient = listOf(Color(0xFF0284C7), Color(0xFF38BDF8), Color(0xFFBAE6FD)),
         primaryAccent = SkyBlueAccent,
@@ -360,7 +373,7 @@ fun getThemeForListing(listing: Listing): IllustrationTheme {
         sceneType = SceneType.TECH_MONITOR
       )
     }
-    title.contains("اسنپ‌فود") || title.contains("غذا") || cat == "dc_food" -> {
+    vectorKey == "vector:food" || title.contains("اسنپ‌فود") || title.contains("غذا") || title.contains("رستوران") || cat == "dc_food" -> {
       IllustrationTheme(
         gradient = listOf(Color(0xFFEA580C), Color(0xFFF97316), Color(0xFFFED7AA)),
         primaryAccent = OrangeAccent,
@@ -370,24 +383,54 @@ fun getThemeForListing(listing: Listing): IllustrationTheme {
         sceneType = SceneType.FOOD_DELIVERY
       )
     }
-    title.contains("برنامه‌نویسی") || title.contains("آموزش") || cat == "dc_course" -> {
+    vectorKey == "vector:clothes" || title.contains("لباس") || title.contains("پوشاک") || cat == "fg_clothing" -> {
       IllustrationTheme(
-        gradient = listOf(Color(0xFF7C3AED), Color(0xFF8B5CF6), Color(0xFFDDD6FE)),
+        gradient = listOf(Color(0xFF8B5CF6), Color(0xFFA78BFA), Color(0xFFDDD6FE)),
         primaryAccent = VioletAccent,
         secondaryAccent = PinkAccent,
-        mainIcon = Icons.Default.School,
-        subIcon = Icons.Default.Computer,
-        sceneType = SceneType.COURSE_DEV
+        mainIcon = Icons.Default.Checkroom,
+        subIcon = Icons.Default.ShoppingBag,
+        sceneType = SceneType.CLOTHES_FASHION
       )
     }
-    title.contains("کالسکه") || cat == "rq_kids" -> {
+    vectorKey == "vector:kitchen" || title.contains("آشپز") || title.contains("یخچال") || cat == "fg_home" -> {
       IllustrationTheme(
-        gradient = listOf(Color(0xFFDB2777), Color(0xFFEC4899), Color(0xFFFBCFE8)),
-        primaryAccent = PinkAccent,
-        secondaryAccent = VioletAccent,
-        mainIcon = Icons.Default.ChildCare,
-        subIcon = Icons.Default.Toys,
-        sceneType = SceneType.BABY_STROLLER
+        gradient = listOf(Color(0xFF059669), Color(0xFF10B981), Color(0xFFA7F3D0)),
+        primaryAccent = EmeraldPrimary,
+        secondaryAccent = LimeGreenAccent,
+        mainIcon = Icons.Default.Kitchen,
+        subIcon = Icons.Default.AutoAwesome,
+        sceneType = SceneType.KITCHEN_HOME
+      )
+    }
+    vectorKey == "vector:car" || title.contains("خودرو") || title.contains("ماشین") || title.contains("دوچرخه") || cat == "fg_vehicles" -> {
+      IllustrationTheme(
+        gradient = listOf(Color(0xFF2563EB), Color(0xFF60A5FA), Color(0xFFDBEAFE)),
+        primaryAccent = SkyBlueAccent,
+        secondaryAccent = IndigoAccent,
+        mainIcon = Icons.Default.DirectionsCar,
+        subIcon = Icons.Default.AutoAwesome,
+        sceneType = SceneType.CAR_VEHICLE
+      )
+    }
+    vectorKey == "vector:tools" || title.contains("ابزار") || title.contains("تعمیر") -> {
+      IllustrationTheme(
+        gradient = listOf(Color(0xFF4B5563), Color(0xFF6B7280), Color(0xFFE5E7EB)),
+        primaryAccent = IndigoAccent,
+        secondaryAccent = OrangeAccent,
+        mainIcon = Icons.Default.Build,
+        subIcon = Icons.Default.AutoAwesome,
+        sceneType = SceneType.TOOLS_DIY
+      )
+    }
+    vectorKey == "vector:health" || title.contains("دارو") || title.contains("پزشک") || title.contains("درمان") -> {
+      IllustrationTheme(
+        gradient = listOf(Color(0xFFE11D48), Color(0xFFF43F5E), Color(0xFFFFE4E6)),
+        primaryAccent = CoralTertiary,
+        secondaryAccent = PinkAccent,
+        mainIcon = Icons.Default.MedicalServices,
+        subIcon = Icons.Default.Favorite,
+        sceneType = SceneType.HEALTH_MEDICAL
       )
     }
     type == ListingType.DISCOUNT -> {

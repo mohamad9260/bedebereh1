@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -53,19 +54,22 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.domain.model.AdminContactInfo
 import com.example.ui.theme.EmeraldPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ContactAdminSheet(
+  contactInfo: AdminContactInfo = AdminContactInfo(),
   onDismiss: () -> Unit,
   sheetState: SheetState,
-  onTicketSent: (String) -> Unit = {},
+  onTicketSent: (String, String) -> Unit = { _, _ -> },
   modifier: Modifier = Modifier
 ) {
   val context = LocalContext.current
   var ticketSubject by remember { mutableStateOf("") }
   var ticketMessage by remember { mutableStateOf("") }
+  var isSending by remember { mutableStateOf(false) }
   var sentSuccessfully by remember { mutableStateOf(false) }
 
   ModalBottomSheet(
@@ -112,9 +116,10 @@ fun ContactAdminSheet(
               color = MaterialTheme.colorScheme.onSurface
             )
             Text(
-              text = "پاسخگویی سریع ۲۴ ساعته و ثبت نظرات",
+              text = contactInfo.supportHours,
               style = MaterialTheme.typography.bodySmall,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
+              color = EmeraldPrimary,
+              fontWeight = FontWeight.Medium
             )
           }
         }
@@ -130,9 +135,9 @@ fun ContactAdminSheet(
 
       Spacer(modifier = Modifier.height(18.dp))
 
-      // Direct Contact Channels
+      // Direct Contact Channels (Configured Dynamically by Admin)
       Text(
-        text = "راه‌های ارتباط مستقیم",
+        text = "راه‌های ارتباط مستقیم (تنظیم‌شده توسط مدیریت)",
         style = MaterialTheme.typography.labelLarge,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -147,16 +152,16 @@ fun ContactAdminSheet(
         ContactChannelCard(
           icon = Icons.Default.Call,
           title = "تماس تلفنی",
-          subtitle = "۰۲۱-۸۸۸۸۹۲۶۰",
-          onClick = { dialSupport(context, "02188889260") },
+          subtitle = contactInfo.supportPhone,
+          onClick = { dialSupport(context, contactInfo.supportPhone) },
           modifier = Modifier.weight(1f)
         )
 
         ContactChannelCard(
           icon = Icons.Default.Email,
           title = "ایمیل پشتیبانی",
-          subtitle = "admin@bedebere.ir",
-          onClick = { sendEmail(context, "admin@bedebere.ir") },
+          subtitle = contactInfo.supportEmail,
+          onClick = { sendEmail(context, contactInfo.supportEmail) },
           modifier = Modifier.weight(1f)
         )
       }
@@ -199,7 +204,7 @@ fun ContactAdminSheet(
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-              text = "کارشناسان در اسرع وقت پاسخ را در بخش اعلانات ارسال می‌کنند.",
+              text = "پیام در پنل مدیریت ثبت گردید و کارشناسان بررسی خواهند کرد.",
               fontSize = 12.sp,
               color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -234,11 +239,13 @@ fun ContactAdminSheet(
         Button(
           onClick = {
             if (ticketMessage.isNotBlank()) {
+              isSending = true
+              onTicketSent(ticketSubject.ifBlank { "پیام کاربر" }, ticketMessage)
               sentSuccessfully = true
-              onTicketSent(ticketMessage)
+              isSending = false
             }
           },
-          enabled = ticketMessage.isNotBlank(),
+          enabled = ticketMessage.isNotBlank() && !isSending,
           shape = RoundedCornerShape(12.dp),
           colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
           modifier = Modifier
@@ -246,14 +253,18 @@ fun ContactAdminSheet(
             .height(48.dp)
             .testTag("send_ticket_btn")
         ) {
-          Icon(
-            imageVector = Icons.Default.Send,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(18.dp)
-          )
-          Spacer(modifier = Modifier.width(8.dp))
-          Text("ارسال پیام به مدیر", color = Color.White, fontWeight = FontWeight.Bold)
+          if (isSending) {
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), color = Color.White)
+          } else {
+            Icon(
+              imageVector = Icons.Default.Send,
+              contentDescription = null,
+              tint = Color.White,
+              modifier = Modifier.size(18.dp)
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text("ارسال پیام به مدیر", color = Color.White, fontWeight = FontWeight.Bold)
+          }
         }
       }
 
@@ -304,8 +315,9 @@ private fun ContactChannelCard(
 
 private fun dialSupport(context: Context, number: String) {
   try {
+    val cleanNum = number.replace("-", "").replace(" ", "")
     val intent = Intent(Intent.ACTION_DIAL).apply {
-      data = Uri.parse("tel:$number")
+      data = Uri.parse("tel:$cleanNum")
     }
     context.startActivity(intent)
   } catch (_: Exception) {}

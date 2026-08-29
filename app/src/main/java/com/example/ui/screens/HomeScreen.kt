@@ -38,6 +38,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -52,17 +53,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.example.data.CategoryData
+import coil.compose.AsyncImage
 import com.example.data.MockListingRepository
 import com.example.data.ReservationResult
 import com.example.domain.model.Listing
 import com.example.domain.model.ListingType
-import com.example.domain.model.MembershipTier
+import com.example.domain.model.PageBanner
 import com.example.ui.components.EmptyStateView
 import com.example.ui.components.HomeSubTabsBar
 import com.example.ui.components.HomeTabBackground
@@ -71,6 +73,7 @@ import com.example.ui.components.ListingCard
 import com.example.ui.components.ListingDetailSheet
 import com.example.ui.components.PersianUtils
 import com.example.ui.components.RecentlyAvailableSheet
+import com.example.ui.components.getCategoryVector
 import com.example.ui.theme.AmberSecondary
 import com.example.ui.theme.EmeraldPrimary
 import com.example.ui.theme.SkyBlueAccent
@@ -99,7 +102,9 @@ fun HomeScreen(
   val context = LocalContext.current
   val scope = rememberCoroutineScope()
 
-  val userProfile by repository.userProfile.collectAsState(initial = defaultUserProfile)
+  val userProfile by repository.userProfile.collectAsState(initial = MockListingRepository.guestUserProfile)
+  val serverCategories by repository.categories.collectAsState(initial = emptyList())
+  val serverBanners by repository.banners.collectAsState(initial = emptyMap())
 
   val listingsFlow = remember(selectedTab, currentCityName, searchQuery) {
     repository.getListingsByType(
@@ -120,8 +125,9 @@ fun HomeScreen(
   }
   val justBecameAvailableItems by justBecameAvailableFlow.collectAsState(initial = emptyList())
 
-  val categories = remember(selectedTab) {
-    CategoryData.getForType(selectedTab)
+  val categories = remember(selectedTab, serverCategories) {
+    val filtered = serverCategories.filter { it.type == selectedTab }
+    if (filtered.isNotEmpty()) filtered else serverCategories
   }
 
   val filteredListings = remember(listings, selectedCategoryId) {
@@ -133,6 +139,16 @@ fun HomeScreen(
     ListingType.FREE_GIFT -> EmeraldPrimary
     ListingType.DISCOUNT -> AmberSecondary
     ListingType.REQUEST -> Color(0xFF0284C7)
+  }
+
+  // Active banner for current tab
+  val activeBanner = remember(selectedTab, serverBanners) {
+    val b = when (selectedTab) {
+      ListingType.FREE_GIFT -> serverBanners["free_gift"] ?: serverBanners["home_free_gift"] ?: serverBanners["home"]
+      ListingType.DISCOUNT -> serverBanners["discount"] ?: serverBanners["home_discount"] ?: serverBanners["home"]
+      ListingType.REQUEST -> serverBanners["request"] ?: serverBanners["home_request"] ?: serverBanners["home"]
+    }
+    if (b != null && !b.isActive) null else b
   }
 
   Box(modifier = modifier.fillMaxSize()) {
@@ -197,11 +213,21 @@ fun HomeScreen(
                 selectedCategoryId = if (isSelected) null else category.id
               },
               label = {
-                Text(
-                  text = "${category.titleFa} (${PersianUtils.formatNumber(count)})",
-                  fontSize = 12.5.sp,
-                  fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
-                )
+                Row(
+                  verticalAlignment = Alignment.CenterVertically,
+                  horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                  Icon(
+                    imageVector = getCategoryVector(category.iconName),
+                    contentDescription = null,
+                    modifier = Modifier.size(15.dp)
+                  )
+                  Text(
+                    text = "${category.titleFa} (${PersianUtils.formatNumber(count)})",
+                    fontSize = 12.sp,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium
+                  )
+                }
               },
               shape = RoundedCornerShape(12.dp),
               colors = FilterChipDefaults.filterChipColors(
@@ -224,112 +250,114 @@ fun HomeScreen(
         }
       }
 
-    // Main Listings Feed
-    if (filteredListings.isEmpty()) {
-      EmptyStateView(
-        title = when (selectedTab) {
-          ListingType.FREE_GIFT -> "هیچ هدیه رایگانی یافت نشد"
-          ListingType.DISCOUNT -> "هیچ کوپن یا تخفیفی یافت نشد"
-          ListingType.REQUEST -> "هیچ درخواستی ثبت نشده است"
-        },
-        description = "با تغییر فیلتر شهر یا دسته‌بندی دوباره جستجو کنید، یا اولین آگهی را ثبت نمایید.",
-        onButtonClick = onNavigateToAddListing,
-        modifier = Modifier.weight(1f)
-      )
-    } else {
-      LazyColumn(
-        modifier = Modifier
-          .fillMaxSize()
-          .testTag("listings_feed"),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-      ) {
-        // App Hero Branding Banner
-        item {
-          HeroBrandingCard(selectedTab = selectedTab)
-        }
+      // Main Listings Feed
+      if (filteredListings.isEmpty()) {
+        EmptyStateView(
+          title = when (selectedTab) {
+            ListingType.FREE_GIFT -> "هیچ هدیه رایگانی یافت نشد"
+            ListingType.DISCOUNT -> "هیچ کوپن یا تخفیفی یافت نشد"
+            ListingType.REQUEST -> "هیچ درخواستی ثبت نشده است"
+          },
+          description = "با تغییر فیلتر شهر یا دسته‌بندی دوباره جستجو کنید، یا اولین آگهی را ثبت نمایید.",
+          onButtonClick = onNavigateToAddListing,
+          modifier = Modifier.weight(1f)
+        )
+      } else {
+        LazyColumn(
+          modifier = Modifier
+            .fillMaxSize()
+            .testTag("listings_feed"),
+          contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+          verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+          // Dynamic Banner Managed via Admin Panel (Hidden if disabled by admin)
+          if (activeBanner != null) {
+            item(key = "hero_branding_banner") {
+              HeroBrandingCard(selectedTab = selectedTab, customBanner = activeBanner)
+            }
+          }
 
-        // Dedicated "⚡ همین الان رایگان شد" (Just Became Available) Section on Free Gifts tab
-        if (selectedTab == ListingType.FREE_GIFT && justBecameAvailableItems.isNotEmpty()) {
-          item(key = "just_became_available_section") {
-            JustBecameAvailableSection(
-              items = justBecameAvailableItems,
-              userTier = userProfile.plan,
-              onListingClick = { item ->
+          // Dedicated "⚡ همین الان رایگان شد" (Just Became Available) Section on Free Gifts tab
+          if (selectedTab == ListingType.FREE_GIFT && justBecameAvailableItems.isNotEmpty()) {
+            item(key = "just_became_available_section") {
+              JustBecameAvailableSection(
+                items = justBecameAvailableItems,
+                userTier = userProfile.plan,
+                onListingClick = { item ->
+                  selectedListingForDetail = item
+                },
+                onViewAllClick = {
+                  showRecentlyAvailableSheet = true
+                }
+              )
+            }
+          }
+
+          itemsIndexed(
+            items = filteredListings,
+            key = { _, it -> it.id }
+          ) { index, listing ->
+            val accessStatus = remember(listing, userProfile.plan) {
+              repository.getListingAccessStatus(listing, userProfile.plan)
+            }
+
+            ListingCard(
+              listing = listing,
+              cardIndex = index,
+              isFavorite = savedIds.contains(listing.id),
+              accessStatus = accessStatus,
+              onItemClick = { item ->
                 selectedListingForDetail = item
               },
-              onViewAllClick = {
-                showRecentlyAvailableSheet = true
+              onFavoriteClick = { id ->
+                repository.toggleFavorite(id)
+                scope.launch {
+                  val isSaved = !savedIds.contains(id)
+                  snackbarHostState.showSnackbar(
+                    if (isSaved) "به نشان‌شده‌ها اضافه شد" else "از نشان‌شده‌ها حذف شد"
+                  )
+                }
+              },
+              onShareClick = { item ->
+                shareListing(context, item)
+              },
+              onReserveClick = { item ->
+                when (val res = repository.reserveListing(item.id)) {
+                  is ReservationResult.Success -> {
+                    scope.launch {
+                      snackbarHostState.showSnackbar("درخواست رزرو برای «${item.title}» با موفقیت ثبت شد 🎉")
+                    }
+                  }
+                  is ReservationResult.DailyLimitReached -> {
+                    scope.launch {
+                      snackbarHostState.showSnackbar(
+                        "سقف مجاز روزانه (${res.maxLimit} رزرو) برای طرح ${res.tier.titleFa} تکمیل شده است. برای ارتقای سقف پکیج را ارتقا دهید."
+                      )
+                    }
+                  }
+                  is ReservationResult.EarlyAccessLocked -> {
+                    scope.launch {
+                      snackbarHostState.showSnackbar(
+                        "این آگهی در بازه اختصاصی پکیج ${res.requiredTier.titleFa} است (${res.remainingMinutes} دقیقه باقی‌مانده)."
+                      )
+                    }
+                  }
+                  is ReservationResult.Error -> {
+                    scope.launch {
+                      snackbarHostState.showSnackbar(res.message)
+                    }
+                  }
+                }
               }
             )
           }
-        }
-
-        itemsIndexed(
-          items = filteredListings,
-          key = { _, it -> it.id }
-        ) { index, listing ->
-          val accessStatus = remember(listing, userProfile.plan) {
-            repository.getListingAccessStatus(listing, userProfile.plan)
+          item {
+            Spacer(modifier = Modifier.height(80.dp))
           }
-
-          ListingCard(
-            listing = listing,
-            cardIndex = index,
-            isFavorite = savedIds.contains(listing.id),
-            accessStatus = accessStatus,
-            onItemClick = { item ->
-              selectedListingForDetail = item
-            },
-            onFavoriteClick = { id ->
-              repository.toggleFavorite(id)
-              scope.launch {
-                val isSaved = !savedIds.contains(id)
-                snackbarHostState.showSnackbar(
-                  if (isSaved) "به نشان‌شده‌ها اضافه شد" else "از نشان‌شده‌ها حذف شد"
-                )
-              }
-            },
-            onShareClick = { item ->
-              shareListing(context, item)
-            },
-            onReserveClick = { item ->
-              when (val res = repository.reserveListing(item.id)) {
-                is ReservationResult.Success -> {
-                  scope.launch {
-                    snackbarHostState.showSnackbar("درخواست رزرو برای «${item.title}» با موفقیت ثبت شد 🎉")
-                  }
-                }
-                is ReservationResult.DailyLimitReached -> {
-                  scope.launch {
-                    snackbarHostState.showSnackbar(
-                      "سقف مجاز روزانه (${res.maxLimit} رزرو) برای طرح ${res.tier.titleFa} تکمیل شده است. برای ارتقای سقف پکیج را ارتقا دهید."
-                    )
-                  }
-                }
-                is ReservationResult.EarlyAccessLocked -> {
-                  scope.launch {
-                    snackbarHostState.showSnackbar(
-                      "این آگهی در بازه اختصاصی پکیج ${res.requiredTier.titleFa} است (${res.remainingMinutes} دقیقه باقی‌مانده)."
-                    )
-                  }
-                }
-                is ReservationResult.Error -> {
-                  scope.launch {
-                    snackbarHostState.showSnackbar(res.message)
-                  }
-                }
-              }
-            }
-          )
-        }
-        item {
-          Spacer(modifier = Modifier.height(80.dp))
         }
       }
     }
   }
-}
 
   // Detail Modal BottomSheet
   selectedListingForDetail?.let { detailListing ->
@@ -341,6 +369,7 @@ fun HomeScreen(
       listing = detailListing,
       isFavorite = savedIds.contains(detailListing.id),
       isOwner = repository.isUserOwner(detailListing),
+      isReserver = (detailListing.reservedByUserId == userProfile.id || (userProfile.rawPhone.isNotBlank() && detailListing.reservedByPhone == userProfile.rawPhone)),
       accessStatus = detailAccessStatus,
       onUpgradeClick = {
         selectedListingForDetail = null
@@ -422,8 +451,11 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HeroBrandingCard(selectedTab: ListingType) {
-  val (gradient, icon, title, subtitle) = when (selectedTab) {
+private fun HeroBrandingCard(
+  selectedTab: ListingType,
+  customBanner: PageBanner? = null
+) {
+  val defaultInfo = when (selectedTab) {
     ListingType.FREE_GIFT -> Quadruple(
       Brush.horizontalGradient(listOf(Color(0xFF00796B), Color(0xFF004D40))),
       Icons.Default.CardGiftcard,
@@ -444,6 +476,10 @@ private fun HeroBrandingCard(selectedTab: ListingType) {
     )
   }
 
+  val bannerTitle = customBanner?.title ?: defaultInfo.third
+  val bannerSubtitle = customBanner?.subtitle ?: defaultInfo.fourth
+  val bannerImageUrl = customBanner?.imageUrl
+
   Card(
     modifier = Modifier
       .fillMaxWidth()
@@ -451,47 +487,78 @@ private fun HeroBrandingCard(selectedTab: ListingType) {
     shape = RoundedCornerShape(16.dp),
     elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
   ) {
-    Box(
-      modifier = Modifier
-        .fillMaxWidth()
-        .background(gradient)
-        .padding(16.dp)
-    ) {
-      Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
-      ) {
+    Box(modifier = Modifier.fillMaxWidth()) {
+      if (!bannerImageUrl.isNullOrBlank()) {
+        AsyncImage(
+          model = bannerImageUrl,
+          contentDescription = bannerTitle,
+          contentScale = ContentScale.FillWidth,
+          modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+        )
+      } else {
         Box(
           modifier = Modifier
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.2f)),
-          contentAlignment = Alignment.Center
+            .fillMaxWidth()
+            .background(defaultInfo.first)
+            .padding(16.dp)
         ) {
-          Icon(
-            imageVector = icon,
-            contentDescription = null,
-            tint = Color.White,
-            modifier = Modifier.size(24.dp)
-          )
-        }
+          Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Box(
+              modifier = Modifier
+                .size(44.dp)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.2f)),
+              contentAlignment = Alignment.Center
+            ) {
+              Icon(
+                imageVector = defaultInfo.second,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(24.dp)
+              )
+            }
 
-        Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(12.dp))
 
-        Column(modifier = Modifier.weight(1f)) {
-          Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Bold,
-            color = Color.White
-          )
-          Spacer(modifier = Modifier.height(2.dp))
-          Text(
-            text = subtitle,
-            style = MaterialTheme.typography.bodySmall,
-            color = Color.White.copy(alpha = 0.85f),
-            fontSize = 11.sp
-          )
+            Column(modifier = Modifier.weight(1f)) {
+              Text(
+                text = bannerTitle,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                color = Color.White
+              )
+              if (!bannerSubtitle.isNullOrBlank()) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                  text = bannerSubtitle,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = Color.White.copy(alpha = 0.85f),
+                  fontSize = 11.sp
+                )
+              }
+            }
+
+            customBanner?.badgeText?.let { badge ->
+              Surface(
+                shape = RoundedCornerShape(20.dp),
+                color = Color.White.copy(alpha = 0.2f),
+                modifier = Modifier.padding(start = 8.dp)
+              ) {
+                Text(
+                  text = badge,
+                  color = Color.White,
+                  style = MaterialTheme.typography.labelSmall,
+                  fontWeight = FontWeight.Bold,
+                  modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                )
+              }
+            }
+          }
         }
       }
     }

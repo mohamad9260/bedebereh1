@@ -3,28 +3,38 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Gift Box Base -->
+    
+    <!-- Infinity / Heart Care Ribbon Loop -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#F59E0B"
+        android:strokeWidth="7"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M54,77 C31,95 18,72 28,52 C37,36 49,60 54,68 C59,60 71,36 80,52 C90,72 77,95 54,77 Z" />
+
+    <!-- Radiant Gift Box Base -->
     <path
         android:fillColor="#FFFFFF"
-        android:pathData="M32,48h44v34c0,4.4 -3.6,8 -8,8H40c-4.4,0 -8,-3.6 -8,-8V48z" />
+        android:pathData="M35,46 h38 v26 c0,4.4 -3.6,8 -8,8 H43 c-4.4,0 -8,-3.6 -8,-8 V46 Z" />
+
     <!-- Gift Box Lid -->
     <path
         android:fillColor="#E0F2F1"
-        android:pathData="M28,40h52v8H28z" />
-    <!-- Ribbon Vertical -->
+        android:pathData="M31,38 h46 v9 H31 Z" />
+
+    <!-- Vertical Amber Ribbon -->
     <path
-        android:fillColor="#FFD54F"
-        android:pathData="M51,40h6v50h-6z" />
-    <!-- Ribbon Bow Left -->
+        android:fillColor="#F59E0B"
+        android:pathData="M50,38 h8 v42 h-8 Z" />
+
+    <!-- Ribbon Knot -->
     <path
-        android:fillColor="#FFCA28"
-        android:pathData="M54,40c-3,-7 -12,-12 -18,-7c-5,4 -2,12 8,11c3.5,-0.3 7.5,-2.2 10,-4z" />
-    <!-- Ribbon Bow Right -->
+        android:fillColor="#D97706"
+        android:pathData="M54,38 m-5,0 a5,5 0 1,1 10,0 a5,5 0 1,1 -10,0" />
+
+    <!-- North Star Sparkle -->
     <path
-        android:fillColor="#FFB300"
-        android:pathData="M54,40c3,-7 12,-12 18,-7c5,4 2,12 -8,11c-3.5,-0.3 -7.5,-2.2 -10,-4z" />
-    <!-- Center Ribbon Knot -->
-    <path
-        android:fillColor="#FFA000"
-        android:pathData="M50,37h8v6h-8z" />
+        android:fillColor="#FFFBEB"
+        android:pathData="M82,26 Q82,32 88,32 Q82,32 82,38 Q82,32 76,32 Q82,32 82,26 Z" />
 </vector>

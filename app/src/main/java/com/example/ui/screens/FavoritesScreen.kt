@@ -37,7 +37,7 @@ fun FavoritesScreen(
 ) {
   val allListings by repository.listings.collectAsState(initial = emptyList())
   val savedIds by repository.savedIds.collectAsState(initial = emptySet())
-  val userProfile by repository.userProfile.collectAsState(initial = defaultUserProfile)
+  val userProfile by repository.userProfile.collectAsState(initial = MockListingRepository.guestUserProfile)
   val scope = rememberCoroutineScope()
   val context = LocalContext.current
 

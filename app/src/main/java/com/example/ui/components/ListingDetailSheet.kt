@@ -47,6 +47,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -67,6 +68,7 @@ import com.example.domain.model.ListingAccessStatus
 import com.example.domain.model.ListingType
 import com.example.domain.model.MembershipTier
 import com.example.ui.theme.AmberSecondary
+import com.example.ui.theme.CoralTertiary
 import com.example.ui.theme.EmeraldPrimary
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -75,6 +77,7 @@ fun ListingDetailSheet(
   listing: Listing,
   isFavorite: Boolean,
   isOwner: Boolean = false,
+  isReserver: Boolean = false,
   accessStatus: ListingAccessStatus = ListingAccessStatus(),
   onDismiss: () -> Unit,
   onFavoriteClick: (String) -> Unit,
@@ -88,6 +91,7 @@ fun ListingDetailSheet(
 ) {
   val context = LocalContext.current
   var copiedSuccess by remember { mutableStateOf(false) }
+  val targetPhone = listing.ownerPhone?.takeIf { it.isNotBlank() } ?: "09121234567"
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,
@@ -580,15 +584,75 @@ fun ListingDetailSheet(
         when (listing.type) {
           ListingType.FREE_GIFT -> {
             if (listing.isReserved) {
-              OutlinedButton(
-                onClick = {},
-                enabled = false,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier
-                  .fillMaxWidth()
-                  .height(50.dp)
-              ) {
-                Text("این هدیه توسط کاربر دیگری رزرو شده است (غیرقابل انتخاب)", fontWeight = FontWeight.Bold)
+              if (isReserver) {
+                Column(
+                  modifier = Modifier.fillMaxWidth(),
+                  verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                  Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = EmeraldPrimary.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth()
+                  ) {
+                    Row(
+                      modifier = Modifier.padding(12.dp),
+                      verticalAlignment = Alignment.CenterVertically
+                    ) {
+                      Icon(Icons.Default.CheckCircle, contentDescription = null, tint = EmeraldPrimary)
+                      Spacer(modifier = Modifier.width(8.dp))
+                      Text(
+                        text = "این هدیه برای شما رزرو شده است. جهت هماهنگی با اهداکننده تماس بگیرید.",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.Bold,
+                        color = EmeraldPrimary
+                      )
+                    }
+                  }
+
+                  Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                  ) {
+                    Button(
+                      onClick = { dialPhone(context, targetPhone) },
+                      shape = RoundedCornerShape(12.dp),
+                      colors = ButtonDefaults.buttonColors(containerColor = EmeraldPrimary),
+                      modifier = Modifier
+                        .weight(1.2f)
+                        .height(50.dp)
+                        .testTag("detail_call_reserver_btn")
+                    ) {
+                      Icon(Icons.Default.Call, contentDescription = null, tint = Color.White)
+                      Spacer(modifier = Modifier.width(6.dp))
+                      Text("تماس: $targetPhone", color = Color.White, fontWeight = FontWeight.Bold)
+                    }
+
+                    OutlinedButton(
+                      onClick = {
+                        onCancelReservation(listing)
+                        onDismiss()
+                      },
+                      shape = RoundedCornerShape(12.dp),
+                      modifier = Modifier
+                        .weight(0.8f)
+                        .height(50.dp)
+                        .testTag("detail_cancel_reservation_btn")
+                    ) {
+                      Text("لغو رزرو", fontWeight = FontWeight.Bold, color = CoralTertiary)
+                    }
+                  }
+                }
+              } else {
+                OutlinedButton(
+                  onClick = {},
+                  enabled = false,
+                  shape = RoundedCornerShape(12.dp),
+                  modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp)
+                ) {
+                  Text("این هدیه توسط کاربر دیگری رزرو شده است (شماره تماس مخفی است)", fontWeight = FontWeight.Bold)
+                }
               }
             } else if (accessStatus.isLockedForCurrentUser) {
               // Locked for non-eligible tiers (Visible to public, but not selectable yet)
@@ -621,7 +685,7 @@ fun ListingDetailSheet(
                 }
 
                 OutlinedButton(
-                  onClick = { dialPhone(context, "09121234567") },
+                  onClick = { dialPhone(context, targetPhone) },
                   shape = RoundedCornerShape(12.dp),
                   modifier = Modifier
                     .fillMaxWidth()
@@ -660,7 +724,7 @@ fun ListingDetailSheet(
                 }
 
                 OutlinedButton(
-                  onClick = { dialPhone(context, "09121234567") },
+                  onClick = { dialPhone(context, targetPhone) },
                   shape = RoundedCornerShape(12.dp),
                   modifier = Modifier
                     .weight(1f)

@@ -37,6 +37,23 @@ enum class MembershipTier(
   DIAMOND("الماس (VIP تجاری)", 2, 25)
 }
 
+data class PageBanner(
+  val page: String,
+  val title: String,
+  val subtitle: String,
+  val badgeText: String = "بده بره",
+  val imageUrl: String? = null,
+  val actionUrl: String? = null,
+  val isActive: Boolean = true
+)
+
+data class AdminContactInfo(
+  val supportPhone: String = "021-88889260",
+  val supportEmail: String = "admin@bedebere.ir",
+  val supportTelegram: String = "@bedebere_admin",
+  val supportHours: String = "پاسخگویی سریع ۲۴ ساعته"
+)
+
 data class SystemDynamicSettings(
   val goldEarlyAccessHours: Int = 2,
   val silverEarlyAccessHours: Int = 1,
@@ -50,7 +67,8 @@ data class SystemDynamicSettings(
   val diamondDailyReserveLimit: Int = 25,
   val silverPlanPriceToman: Long = 49_000L,
   val goldPlanPriceToman: Long = 99_000L,
-  val diamondPlanPriceToman: Long = 149_000L
+  val diamondPlanPriceToman: Long = 149_000L,
+  val contactInfo: AdminContactInfo = AdminContactInfo()
 )
 
 data class RecentlyAvailableItem(
@@ -88,6 +106,7 @@ data class Listing(
   val categoryIcon: String,
   val ownerId: String,
   val ownerDisplayName: String,
+  val ownerPhone: String? = null,
   val province: String,
   val city: String,
   val approximateLocation: String? = null,
@@ -98,6 +117,9 @@ data class Listing(
   val timeAgoFa: String = "چند لحظه پیش",
   val createdAt: Long = System.currentTimeMillis(),
   val isReserved: Boolean = false,
+  val reservedByUserId: String? = null,
+  val reservedByPhone: String? = null,
+  val rejectionReason: String? = null,
   val isFavorite: Boolean = false,
   val visibilityTier: MembershipTier = MembershipTier.FREE
 )
@@ -107,7 +129,10 @@ data class Category(
   val titleFa: String,
   val type: ListingType,
   val iconName: String,
-  val parentId: String? = null
+  val parentId: String? = null,
+  val isLocked: Boolean = false,
+  val lockMessage: String? = null,
+  val displayOrder: Int = 0
 )
 
 data class UserProfile(
@@ -115,16 +140,33 @@ data class UserProfile(
   val displayName: String,
   val mobileNumberMasked: String,
   val nationalIdMasked: String,
+  val rawPhone: String = "",
+  val rawNationalId: String = "",
   val province: String,
   val city: String,
   val plan: MembershipTier = MembershipTier.FREE,
   val planExpiryFa: String? = null,
   val successfulOffersCount: Int = 0,
   val completedRequestsCount: Int = 0,
-  val dailyReservationsCount: Int = 0
+  val dailyReservationsCount: Int = 0,
+  val isBanned: Boolean = false,
+  val banReason: String? = null,
+  val canPostListing: Boolean = true,
+  val isLoggedIn: Boolean = false,
+  val authToken: String? = null
 )
 
 data class City(
   val name: String,
   val province: String
+)
+
+data class AppNotification(
+  val id: String,
+  val title: String,
+  val message: String,
+  val timeAgo: String = "هم‌اکنون",
+  val type: String = "info", // "approved", "rejected", "reserved", "system"
+  val isUnread: Boolean = true,
+  val timestamp: Long = System.currentTimeMillis()
 )
